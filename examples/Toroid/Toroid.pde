@@ -165,7 +165,7 @@ void drawFrames() {
 
 void drawVectorOnPoint(Vec3D pos, Vec3D vector) {
   float k = 10;
-  beginShape();
+  beginShape(LINES);
   vertex(pos.x, pos.y, pos.z);
   vertex(pos.x + vector.x*k, pos.y + vector.y*k, pos.z + vector.z*k);
   endShape(); 

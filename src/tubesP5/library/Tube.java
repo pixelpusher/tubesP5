@@ -42,7 +42,7 @@ public class Tube extends TriangleMesh {
 
 	private ParallelTransportFrame soul;
 	private int curveLength;
-	private int radius = 10;
+	private float radius = 10;
 	private int diameterQuality = 20; // also spline subdivisions
 	private float[] cachedRadius = null;
 	private boolean usedCachedRadius = false;
@@ -57,7 +57,7 @@ public class Tube extends TriangleMesh {
 	
 	//-------------------------------------------------------- ctor
 	
-	public Tube(ParallelTransportFrame soul, int radius, int diameter_quality) {
+	public Tube(ParallelTransportFrame soul, float radius, int diameter_quality) {
 		System.out.println("Tube > constructor");
 		this.setComputed(false);
 		this.soul = soul;
@@ -101,15 +101,14 @@ public class Tube extends TriangleMesh {
 	//
 	public List<Vec2D> computeAndGetSplineVerts( Spline2D spline)
 	{
-		spline.updateCoefficients();
-		spline.computeVertices(this.diameterQuality);
-		return spline.getDecimatedVertices(this.splineQuality, true);
+		return spline.computeVertices(this.diameterQuality);
+		//return spline.getDecimatedVertices(this.splineQuality, true);
 	}
 	
 	
 	// TODO - change exception to a proper type
 	
-	public void compute( List<Spline2D> profiles) throws Exception
+	public void compute( List<Spline2D> profiles) //throws Exception
 	{
 		this.setComputed(false);
 		
@@ -119,68 +118,107 @@ public class Tube extends TriangleMesh {
 		this.faces.clear();
 		
 		// sanity check
+		/*
 		if (profiles.size() != soul.getCurveLength())
 		{
 			throw new Exception("ERROR profile and curve not same length: " + profiles.size() + "/" 
 					+ soul.getCurveLength());
 		}
-		else
+		*/
+		
+		Iterator<Spline2D> profilesIterator = profiles.iterator();
+
+		Spline2D currentShape = profilesIterator.next();
+				
+		List<Vec2D> currentShapeVerts = computeAndGetSplineVerts(currentShape);
+
+		int i=0; // index
+
+		ArrayList<Vec3D> currentPath = shapeOnPath(currentShapeVerts, soul, i);
+		
+		while (++i < soul.getCurveLength())
 		{
-			Iterator<Spline2D> profilesIterator = profiles.iterator();
+			//System.out.println("profile pts:" + currentShapeVerts.size());
+			//System.out.println("soul[" + i + "]=" +  soul.get(i));
+			
+			Spline2D nextShape = profilesIterator.next();
+			List<Vec2D> nextShapeVerts = computeAndGetSplineVerts(nextShape);
+			ArrayList<Vec3D> nextPath = shapeOnPath(nextShapeVerts, soul, i);
 
-			Spline2D currentShape = profilesIterator.next();
-			
-			List<Vec2D> currentShapeVerts = computeAndGetSplineVerts(currentShape);
-			
-			int i=0; // index
-			
-			ArrayList<Vec3D> currentPath = shapeOnPath(currentShapeVerts, soul, i);
+			// blindly try... so what if we hit an exception... catch it later
 
-			while (profilesIterator.hasNext())
+
+			int endIndex = currentPath.size() - 2;
+			
+			for (int startIndex = 0; startIndex < endIndex; startIndex++  )
 			{
-				Spline2D nextShape = profilesIterator.next();
-				List<Vec2D> nextShapeVerts = computeAndGetSplineVerts(nextShape);
-				ArrayList<Vec3D> nextPath = shapeOnPath(nextShapeVerts, soul, i);
-				
-				// blindly try... so what if we hit an exception... catch it later
 
+//				Vec3D prevProfileVert1 = currentPath.get(startIndex);
+//				Vec3D prevProfileVert2 = currentPath.get(startIndex+1);
+//				Vec3D currProfileVert1 = nextPath.get(startIndex);
+//				Vec3D currProfileVert2 = nextPath.get(startIndex+1);
+//
+//				this.addFace(prevProfileVert1, prevProfileVert2, currProfileVert1);
+//				this.addFace(prevProfileVert2, currProfileVert2, currProfileVert1);				
+
+				Vec3D  p1, p2, p3, p4, p5, p6;
+
+				p1 = new Vec3D(); p2 = new Vec3D(); p3 = new Vec3D();
+				p4 = new Vec3D(); p5 = new Vec3D(); p6 = new Vec3D();
+						
+				int j = startIndex;
 				
-				int endIndex = currentPath.size() - 1;
+				p1.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
+				p2.set(nextPath.get(j).x,nextPath.get(j).y,nextPath.get(j).z);
+				p3.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z);			
+
+				p4.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z); 
+				p5.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
+				p6.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
+				this.addFace(p1, p2, p3);
+				this.addFace(p4, p5, p6);
 				
-				for (int startIndex = 0; startIndex < endIndex; startIndex++  )
-				{
-					Vec3D prevProfileVert1 = currentPath.get(startIndex);
-			        Vec3D prevProfileVert2 = currentPath.get(startIndex+1);
-			        Vec3D currProfileVert1 = nextPath.get(startIndex);
-			        Vec3D currProfileVert2 = nextPath.get(startIndex+1);
-			        
-			        this.addFace(prevProfileVert1, prevProfileVert2, currProfileVert1);
-			        this.addFace(prevProfileVert2, currProfileVert2, currProfileVert1);				
-				}
-				
-				// add last face a bit manually: the last to the first to close the curve.
-			    // why? To avoid using % inside the above each loop, hopefully save some CPU cycles?
-			    // TODO - see if that's true
-				
-				Vec3D prevProfileVert1 = currentPath.get(endIndex-1);
-		        Vec3D prevProfileVert2 = currentPath.get(0);
-		        Vec3D currProfileVert1 = nextPath.get(endIndex-1);
-		        Vec3D currProfileVert2 = nextPath.get(0);
-		        
-		        this.addFace(prevProfileVert1, prevProfileVert2, currProfileVert1);
-		        this.addFace(prevProfileVert2, currProfileVert2, currProfileVert1);		
-				
-				// next shape is now current
-				currentShape = nextShape;
-				currentShapeVerts = nextShapeVerts;
-				currentPath = nextPath;
-				
-				i++;
-				
-			// end for all profile shapes	
+				/*
+				System.out.println("p1:" + p1);
+				System.out.println("p2:" + p2);
+				System.out.println("p3:" + p3);
+				*/
 			}
+
+			// add last face a bit manually: the last to the first to close the curve.
+			// why? To avoid using % inside the above each loop, hopefully save some CPU cycles?
+			// TODO - see if that's true
+
+//			Vec3D prevProfileVert1 = currentPath.get(endIndex+1);
+//			Vec3D prevProfileVert2 = currentPath.get(0);
+//			Vec3D currProfileVert1 = nextPath.get(endIndex+1);
+//			Vec3D currProfileVert2 = nextPath.get(0);
+//
+//			this.addFace(prevProfileVert1, prevProfileVert2, currProfileVert1);
+//			this.addFace(prevProfileVert2, currProfileVert2, currProfileVert1);		
+
 			
-		// end else
+			Vec3D  p1, p2, p3, p4, p5, p6;
+
+			p1 = new Vec3D(); p2 = new Vec3D(); p3 = new Vec3D();
+			p4 = new Vec3D(); p5 = new Vec3D(); p6 = new Vec3D();
+					
+			int j = endIndex;
+			
+			p1.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
+			p2.set(nextPath.get(j).x,nextPath.get(j).y,nextPath.get(j).z);
+			p3.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z);			
+
+			p4.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z); 
+			p5.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
+			p6.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
+			this.addFace(p1, p2, p3);
+			this.addFace(p4, p5, p6);			
+			
+			// next shape is now current
+			currentPath = nextPath;
+
+			// end for all profile shapes	
 		}
 		
 		this.computeFaceNormals();
@@ -193,23 +231,47 @@ public class Tube extends TriangleMesh {
 	 * Given a 2D shape profile, fit it to the parallel transport frame at the given index
 	 * 
 	 */
-	static public ArrayList<Vec3D> shapeOnPath(List<Vec2D> currentShapeVerts, ParallelTransportFrame frame, 
+	public ArrayList<Vec3D> shapeOnPath(List<Vec2D> currentShapeVerts, ParallelTransportFrame frame, 
 			int index) 
 	{
 		ArrayList<Vec3D> path = new ArrayList<Vec3D>( currentShapeVerts.size() ); 
-
+		
+		float angle = 0;
+		final float angleInc = MathUtils.TWO_PI / (currentShapeVerts.size());
+		
 		for (Vec2D currentVert : currentShapeVerts)
 		{
 			Vec3D p = currentVert.to3DXY();
+			/*
+			float m = currentVert.magnitude() * this.radius;
+			
+			float c = MathUtils.cos(angle) * m;
+			float s = MathUtils.sin(angle) * m;
+			*/
+			
 			Vec3D svert = frame.vertices.get(index);
 			Vec3D sbinorm = frame.getBinormal(index);
 			Vec3D snorm = frame.getNormal(index);
-
-			p.x = svert.x + p.x*sbinorm.x + p.y*snorm.x;
-			p.y = svert.y + p.x*sbinorm.y + p.y*snorm.y;
-			p.z = svert.z + p.x*sbinorm.z + p.y*snorm.z;
+/*
+			p.x = svert.x + c*sbinorm.x + s*snorm.x;
+			p.y = svert.y + c*sbinorm.y + s*snorm.y;
+			p.z = svert.z + c*sbinorm.z + s*snorm.z;
+*/
+			
+			p.x = svert.x + currentVert.x*sbinorm.x + currentVert.y*snorm.x;
+			p.y = svert.y + currentVert.x*sbinorm.y + currentVert.y*snorm.y;
+			//p.z = svert.z + currentVert.x*sbinorm.z + currentVert.y*snorm.z;
+			p.z = svert.z + currentVert.x*sbinorm.z + currentVert.y*snorm.z;
+			
+			
+		/*
+			p.x = svert.x + currentVert.x*sbinorm.x;
+			p.y = svert.y + currentVert.x*sbinorm.y;
+			p.z = svert.z + currentVert.x*sbinorm.z;			
+		*/
 			
 			path.add(p);
+			angle += angleInc;
 		}
 		return path;
 	}
@@ -306,11 +368,11 @@ public class Tube extends TriangleMesh {
 		return usedCachedRadius;
 	}
 
-	public void setRadius(int radius) {
+	public void setRadius(float radius) {
 		this.radius = radius;
 	}
 
-	public int getRadius() {
+	public float getRadius() {
 		return radius;
 	}
 	
