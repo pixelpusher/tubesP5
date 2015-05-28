@@ -30,7 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import tubesP5.library.ParallelTransportFrame;
-
+import toxi.geom.LineStrip2D;
 import toxi.geom.Vec3D;
 import toxi.geom.Spline2D; // for path profiles
 import toxi.geom.Vec2D;
@@ -99,9 +99,9 @@ public class Tube extends TriangleMesh {
 	//
 	// convenience function for splines
 	//
-	public List<Vec2D> computeAndGetSplineVerts( Spline2D spline)
+	public LineStrip2D computeAndGetSplineVerts( Spline2D spline)
 	{
-		return spline.computeVertices(this.diameterQuality);
+		return spline.toLineStrip2D(this.diameterQuality);
 		//return spline.getDecimatedVertices(this.splineQuality, true);
 	}
 	
@@ -130,7 +130,7 @@ public class Tube extends TriangleMesh {
 
 		Spline2D currentShape = profilesIterator.next();
 				
-		List<Vec2D> currentShapeVerts = computeAndGetSplineVerts(currentShape);
+		LineStrip2D currentShapeVerts = computeAndGetSplineVerts(currentShape);
 
 		int i=0; // index
 
@@ -142,7 +142,7 @@ public class Tube extends TriangleMesh {
 			//System.out.println("soul[" + i + "]=" +  soul.get(i));
 			
 			Spline2D nextShape = profilesIterator.next();
-			List<Vec2D> nextShapeVerts = computeAndGetSplineVerts(nextShape);
+			LineStrip2D nextShapeVerts = computeAndGetSplineVerts(nextShape);
 			ArrayList<Vec3D> nextPath = shapeOnPath(nextShapeVerts, soul, i);
 
 			// blindly try... so what if we hit an exception... catch it later
@@ -175,8 +175,10 @@ public class Tube extends TriangleMesh {
 				p4.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z); 
 				p5.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
 				p6.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
+				
 				this.addFace(p1, p2, p3);
-				this.addFace(p4, p5, p6);
+				
+				this.addFace(p4, p6, p5);
 				
 				/*
 				System.out.println("p1:" + p1);
@@ -207,13 +209,14 @@ public class Tube extends TriangleMesh {
 			
 			p1.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
 			p2.set(nextPath.get(j).x,nextPath.get(j).y,nextPath.get(j).z);
-			p3.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z);			
+			p3.set(nextPath.get(0).x,nextPath.get(0).y,nextPath.get(0).z);			
 
-			p4.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z); 
+			p4.set(nextPath.get(0).x,nextPath.get(0).y,nextPath.get(0).z); 
 			p5.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
-			p6.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
+			p6.set(currentPath.get(0).x,currentPath.get(0).y,currentPath.get(0).z);
+			
 			this.addFace(p1, p2, p3);
-			this.addFace(p4, p5, p6);			
+			this.addFace(p4, p6, p5);			
 			
 			// next shape is now current
 			currentPath = nextPath;
@@ -231,15 +234,17 @@ public class Tube extends TriangleMesh {
 	 * Given a 2D shape profile, fit it to the parallel transport frame at the given index
 	 * 
 	 */
-	public ArrayList<Vec3D> shapeOnPath(List<Vec2D> currentShapeVerts, ParallelTransportFrame frame, 
+	public ArrayList<Vec3D> shapeOnPath(LineStrip2D nextShapeVerts, ParallelTransportFrame frame, 
 			int index) 
 	{
-		ArrayList<Vec3D> path = new ArrayList<Vec3D>( currentShapeVerts.size() ); 
+		int numVerts = nextShapeVerts.getVertices().size();
+		
+		ArrayList<Vec3D> path = new ArrayList<Vec3D>( numVerts ); 
 		
 		float angle = 0;
-		final float angleInc = MathUtils.TWO_PI / (currentShapeVerts.size());
+		final float angleInc = MathUtils.TWO_PI / (numVerts);
 		
-		for (Vec2D currentVert : currentShapeVerts)
+		for (Vec2D currentVert : nextShapeVerts)
 		{
 			Vec3D p = currentVert.to3DXY();
 			/*
