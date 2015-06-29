@@ -42,7 +42,7 @@ import toxi.geom.Vec3D;
 public class LineStrip3D implements Iterable<Vec3D> {
 
     @XmlElement(name = "v")
-	public List<Vec3D> vertices = new ArrayList<Vec3D>();
+	public ArrayList<Vec3D> vertices = new ArrayList<Vec3D>();
 
     protected float[] arcLenIndex;
 
@@ -92,7 +92,7 @@ public class LineStrip3D implements Iterable<Vec3D> {
      * @param step
      * @return point list
      */
-    public List<Vec3D> getDecimatedVertices(float step) {
+    public ArrayList<Vec3D> getDecimatedVertices(float step) {
         return getDecimatedVertices(step, true);
     }
 
@@ -109,7 +109,7 @@ public class LineStrip3D implements Iterable<Vec3D> {
      *            of its distance.
      * @return point list
      */
-    public List<Vec3D> getDecimatedVertices(float step, boolean doAddFinalVertex) {
+    public ArrayList<Vec3D> getDecimatedVertices(float step, boolean doAddFinalVertex) {
         ArrayList<Vec3D> uniform = new ArrayList<Vec3D>();
         if (vertices.size() < 3) {
             if (vertices.size() == 2) {
@@ -158,9 +158,9 @@ public class LineStrip3D implements Iterable<Vec3D> {
         return arcLen;
     }
 
-    public List<Line3D> getSegments() {
+    public ArrayList<Line3D> getSegments() {
         final int num = vertices.size();
-        List<Line3D> segments = new ArrayList<Line3D>(num - 1);
+        ArrayList<Line3D> segments = new ArrayList<Line3D>(num - 1);
         for (int i = 1; i < num; i++) {
             segments.add(new Line3D(vertices.get(i - 1), vertices.get(i)));
         }
@@ -170,7 +170,7 @@ public class LineStrip3D implements Iterable<Vec3D> {
     /**
      * @return the vertices
      */
-    public List<Vec3D> getVertices() {
+    public ArrayList<Vec3D> getVertices() {
         return vertices;
     }
 
@@ -182,7 +182,21 @@ public class LineStrip3D implements Iterable<Vec3D> {
      * @param vertices
      *            the vertices to set
      */
-    public void setVertices(List<Vec3D> vertices) {
-        this.vertices = vertices;
+    public void setVertices(ArrayList<Vec3D> vertices) {
+    	this.vertices = vertices;
     }
+    
+    /**
+     * @param vertices
+     *            the vertices to be copied
+     */
+    public void copyVertices(List<Vec3D> vertices) {
+    	this.vertices.clear(); // clear old references
+    	this.vertices.ensureCapacity(vertices.size());
+    	for (Vec3D vert : vertices)
+    	{
+    		this.vertices.add( vert );
+    	}
+    }
+    
 }

@@ -50,7 +50,13 @@ public class ParallelTransportFrame extends LineStrip3D implements IFrameCurve{
 	public ParallelTransportFrame(Collection<? extends Vec3D> vertices) {
 		super(vertices);
 
-		this.curve_length = vertices.size();
+		initPTF();
+	}
+	
+	
+	final private void initPTF()
+	{
+		this.curve_length = this.vertices.size();
 
 		for(int i=0; i<=curve_length; i++)  {
 			tangents.add(new Vec3D());
@@ -197,4 +203,30 @@ public class ParallelTransportFrame extends LineStrip3D implements IFrameCurve{
 	public int getCurveLength() {
 		return curve_length;
 	}
+
+
+	/* (non-Javadoc)
+	 * @see tubesP5.library.LineStrip3D#setVertices(java.util.ArrayList)
+	 */
+	@Override
+	public void setVertices(ArrayList<Vec3D> vertices) {
+		super.setVertices(vertices);
+		
+		initPTF();
+	}
+
+
+	/* (non-Javadoc)
+	 * @see tubesP5.library.LineStrip3D#copyVertices(java.util.List)
+	 */
+	@Override
+	public void copyVertices(List<Vec3D> vertices) {
+		
+		super.copyVertices(vertices);
+		
+		initPTF();
+	}
+	
+	
+	
 }
