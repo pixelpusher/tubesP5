@@ -143,7 +143,7 @@ public final class OrganicProfileTube extends Tube {
 				p3.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z);			
 				p4.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
 				
-				this.addFace(p1, p2, p3);
+				this.addFace(p1, p3, p2);
 				this.addFace(p1, p4, p3);
 
 			}
@@ -159,7 +159,7 @@ public final class OrganicProfileTube extends Tube {
 			p3.set(nextPath.get(0).x,nextPath.get(0).y,nextPath.get(0).z);			
 			p4.set(currentPath.get(0).x,currentPath.get(0).y,currentPath.get(0).z);
 			
-			this.addFace(p1, p2, p2);
+			this.addFace(p1, p3, p2);
 			this.addFace(p1, p4, p3);			
 			
 			
@@ -194,7 +194,7 @@ public final class OrganicProfileTube extends Tube {
 		ArrayList<Vec3D> path = new ArrayList<Vec3D>( numVerts ); 
 		
 		float angle = 0;
-		final float angleInc = MathUtils.TWO_PI / numVerts;
+		final float angleInc = MathUtils.TWO_PI / (numVerts-1);
 		
 		
 		for (Vec2D currentVert : nextShapeVerts)
