@@ -194,7 +194,7 @@ public final class OrganicProfileTube extends Tube {
 		ArrayList<Vec3D> path = new ArrayList<Vec3D>( numVerts ); 
 		
 		float angle = 0;
-		final float angleInc = MathUtils.TWO_PI / (numVerts-1);
+		final float angleInc = MathUtils.TWO_PI / numVerts;
 		
 		
 		for (Vec2D currentVert : nextShapeVerts)
@@ -269,8 +269,41 @@ public final class OrganicProfileTube extends Tube {
 					p.z = svert.z + MathUtils.sin(angle)*MathUtils.abs(currentVert.y) + 
 							MathUtils.cos(angle)*MathUtils.abs(currentVert.y); // extrude at 90;
 					
-					// simpler
-					//p.z = svert.z + MathUtils.sin(angle)*mag;
+					/*
+					float s = MathUtils.sin(angle);
+					float c = MathUtils.cos(angle);
+					
+					float r = 2f;
+					
+					// needs  ramp up, but them connect in the end
+					p.z = svert.z +  c*2*r*angle/MathUtils.TWO_PI;
+					*/
+					
+					
+					/*
+					s += 1f;
+					s*= 0.5;
+					s += 0.5f; 
+					if (angle >= MathUtils.PI)
+					{
+						mag = currentVert.y;
+						
+						//mag *= stan.z;
+						
+						// strangely round...
+						//p.z = svert.z + (s*s - 0.5f)*mag;
+						p.z = svert.z + s*mag;
+						
+					}
+					else
+					{
+						float a = 1f - angle/MathUtils.TWO_PI;
+						
+						
+						p.z = svert.z + a*a*20f + 2f;
+					}
+					*/
+					
 					
 				}
 				break;
