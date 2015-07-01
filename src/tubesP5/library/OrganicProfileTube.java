@@ -18,6 +18,7 @@ public final class OrganicProfileTube extends Tube {
 
 	// shape profiles to map across the path
 	public ArrayList<LineStrip2D> profiles;
+	public ArrayList<LineStrip3D> pathProfiles;
 	
 	// shape on path strategies
 	final public static byte MIX_FRAMES = 0;
@@ -35,6 +36,7 @@ public final class OrganicProfileTube extends Tube {
 	public OrganicProfileTube(ParallelTransportFrame soul) {
 		super(soul);
 		this.profiles = new ArrayList<LineStrip2D>();
+		this.pathProfiles = new ArrayList<LineStrip3D>();
 		this.strategy = OrganicProfileTube.TANGENT_FRAMES;
 	}
 
@@ -64,13 +66,16 @@ public final class OrganicProfileTube extends Tube {
 	 * @param profiles the profiles to copy into this one
 	 */
 	public OrganicProfileTube setProfiles(ArrayList<LineStrip2D> profiles) {
-		this.profiles.clear(); 
+		this.profiles.clear();
 		this.profiles.ensureCapacity(profiles.size());
 		for (LineStrip2D profile : profiles)
 		{
 			this.profiles.add( profile );
 		}
-		
+
+		this.pathProfiles.clear();
+		this.pathProfiles.ensureCapacity(profiles.size());
+
 		
 		return this;
 	}
@@ -84,6 +89,10 @@ public final class OrganicProfileTube extends Tube {
 	@Override
 	public void compute() //throws Exception
 	{
+		
+		this.pathProfiles.clear();
+		this.pathProfiles.ensureCapacity(profiles.size());
+		
 		// size check... maybe this should change to something else...
 		if (this.profiles.size() < 3)
 		{
@@ -114,44 +123,66 @@ public final class OrganicProfileTube extends Tube {
 		*/
 		
 		Iterator<LineStrip2D> profilesIterator = this.profiles.iterator();
-
+		
 		LineStrip2D currentShapeVerts = profilesIterator.next();
+		
+		
 
 		int i=0; // index
 
-		ArrayList<Vec3D> currentPath = shapeOnPath(currentShapeVerts, soul, i);
+		LineStrip3D currentPath = shapeOnPath(currentShapeVerts, soul, i);
+		
+		// front cap
+		
+		Vec3D centroid = new Vec3D();
+		
+		for (Vec3D v : currentPath)
+		{
+			centroid.x += v.x;
+			centroid.y += v.y;
+			centroid.z += v.z;
+		}
+		
+		centroid.scaleSelf(1.0f/currentPath.size()); // average points
+		
+		for (int endIndex=currentPath.size()-1, n=0; n< endIndex; n++)
+		{
+			Vec3D v1 = currentPath.get(n);
+			Vec3D v2 = currentPath.get(n+1);
+			this.addFace(v1,centroid,v2);
+		}
+		
 		
 		while (++i < soul.getCurveLength())
 		{
+			this.pathProfiles.add(currentPath);
+			
 			//System.out.println("profile pts:" + currentShapeVerts.size());
 			//System.out.println("soul[" + i + "]=" +  soul.get(i));
 			
 			LineStrip2D nextShapeVerts = profilesIterator.next();
-			ArrayList<Vec3D> nextPath = shapeOnPath(nextShapeVerts, soul, i);
+			LineStrip3D nextPath = shapeOnPath(nextShapeVerts, soul, i);
 
 			// blindly try... so what if we hit an exception... catch it later
 
 
-			int endIndex = currentPath.size()-2;
+			int endIndex = currentPath.size()-1;
 			
-			for (int startIndex = 0; startIndex < endIndex; startIndex++  )
-			{
-				int j = startIndex;
-				
+			for (int j = 0; j < endIndex; j++  )
+			{	
 				p1.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
 				p2.set(nextPath.get(j).x,nextPath.get(j).y,nextPath.get(j).z);
 				p3.set(nextPath.get(j+1).x,nextPath.get(j+1).y,nextPath.get(j+1).z);			
 				p4.set(currentPath.get(j+1).x,currentPath.get(j+1).y,currentPath.get(j+1).z);
 				
-				this.addFace(p1, p3, p2);
+				this.addFace(p1, p2, p3);
 				this.addFace(p1, p4, p3);
-
 			}
 
 			// add last face a bit manually: the last to the first to close the curve.
 			// why? To avoid using % inside the above each loop, hopefully save some CPU cycles?
 			// TODO - test if that's true
-							
+			/*				
 			int j = endIndex+1;
 			
 			p1.set(currentPath.get(j).x,currentPath.get(j).y,currentPath.get(j).z);       
@@ -161,7 +192,7 @@ public final class OrganicProfileTube extends Tube {
 			
 			this.addFace(p1, p3, p2);
 			this.addFace(p1, p4, p3);			
-			
+			*/
 			
 			// next shape is now current
 			currentPath = nextPath;
@@ -176,6 +207,25 @@ public final class OrganicProfileTube extends Tube {
 		// add triangle for last point, centroid, first point
 		
 		
+		
+		// end cap
+		
+		for (Vec3D v : currentPath)
+		{
+			centroid.x += v.x;
+			centroid.y += v.y;
+			centroid.z += v.z;
+		}
+		
+		centroid.scaleSelf(1.0f/currentPath.size()); // average points
+		
+		for (int endIndex=currentPath.size()-1, n=0; n< endIndex; n++)
+		{
+			Vec3D v1 = currentPath.get(n);
+			Vec3D v2 = currentPath.get(n+1);
+			this.addFace(v1,v2, centroid);
+		}
+		
 		this.computeFaceNormals();
 		this.setComputed(true);
 		
@@ -186,12 +236,12 @@ public final class OrganicProfileTube extends Tube {
 	 * Given a 2D shape profile, fit it to the parallel transport frame at the given vertex index
 	 * 
 	 */
-	public ArrayList<Vec3D> shapeOnPath(LineStrip2D nextShapeVerts, ParallelTransportFrame frame, 
+	public LineStrip3D shapeOnPath(LineStrip2D nextShapeVerts, ParallelTransportFrame frame, 
 			int index) 
 	{
 		int numVerts = nextShapeVerts.getVertices().size();
 		
-		ArrayList<Vec3D> path = new ArrayList<Vec3D>( numVerts ); 
+		LineStrip3D path = new LineStrip3D( numVerts ); 
 		
 		float angle = 0;
 		final float angleInc = MathUtils.TWO_PI / numVerts;
@@ -237,12 +287,19 @@ public final class OrganicProfileTube extends Tube {
 					//p.x = svert.x + currentVert.x*stan.x + currentVert.y*stan.x;
 					//p.y = svert.y + currentVert.x*stan.y + currentVert.y*stan.y;
 					
-					p.x = svert.x + mag*stan.x;
-					p.y = svert.y + mag*stan.y;
+					//p.x = svert.x + currentVert.x*stan.y;
+					//p.y = svert.y + currentVert.y*stan.y;
 					//p.z = svert.z + currentVert.y*stan.z;
-					//p.z = svert.z + MathUtils.sin(angle)*currentVert.y + MathUtils.cos(angle)*currentVert.x; // extrude at 90;
-					p.z = svert.z + MathUtils.sin(angle)*MathUtils.abs(currentVert.y) + 
-							MathUtils.cos(angle)*MathUtils.abs(currentVert.y); // extrude at 90;
+					
+					p.x = svert.x + currentVert.y*stan.x;
+					p.y = svert.y + currentVert.y*stan.y;
+					p.z = svert.z + currentVert.x*stan.z;
+					
+					
+					
+					//p.z = svert.z + MathUtils.sin(angle)*currentVert.y + MathUtils.cos(angle)*currentVert.y; // extrude at 90;
+					//p.z = svert.z + MathUtils.sin(angle)*MathUtils.abs(currentVert.y) + 
+							//MathUtils.cos(angle)*MathUtils.abs(currentVert.y); // extrude at 90;
 				}
 				break;
 				
@@ -259,15 +316,22 @@ public final class OrganicProfileTube extends Tube {
 					//p.x = svert.x + currentVert.x*stan.x + currentVert.y*stan.x;
 					//p.y = svert.y + currentVert.x*stan.y + currentVert.y*stan.y;
 					
-					p.x = svert.x + svertDir.x;
-					p.y = svert.y + svertDir.y;
+					p.x = svert.x + currentVert.y*svertDir.x;
+					p.y = svert.y + currentVert.y*svertDir.y;
 					
 					// totally fucked up with missing geom, but stunning...
 					//p.z = svert.z + MathUtils.sin(angle)*mag + MathUtils.cos(angle)*mag; // extrude at 90
 					
+					/*
 					// standard profile wrapped to a circular path
 					p.z = svert.z + MathUtils.sin(angle)*MathUtils.abs(currentVert.y) + 
 							MathUtils.cos(angle)*MathUtils.abs(currentVert.y); // extrude at 90;
+					*/
+					
+					//p.z = svert.z + MathUtils.sin(angle)*currentVert.y + 
+					//		MathUtils.cos(angle)*currentVert.y;
+					
+					p.z = svert.z + currentVert.x;
 					
 					/*
 					float s = MathUtils.sin(angle);
